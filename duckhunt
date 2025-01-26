@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Duck Hunt</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: skyblue;
+      font-family: Arial, sans-serif;
+      cursor: url('https://cdn.pixabay.com/photo/2016/03/31/18/34/target-1292016_960_720.png'), auto; /* Replace URL with a crosshair/gun image URL */
+    }
+
+    #gameCanvas {
+      display: block;
+      margin: 0 auto;
+      background: skyblue;
+    }
+
+    .score {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: white;
+      font-size: 20px;
+      text-shadow: 2px 2px 5px black;
+    }
+  </style>
+</head>
+<body>
+  <div class="score">Score: <span id="score">0</span></div>
+  <canvas id="gameCanvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreDisplay = document.getElementById('score');
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    let score = 0;
+
+    class Duck {
+      constructor() {
+        this.size = 40;
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * (canvas.height / 2);
+        this.speedX = (Math.random() * 2 + 2) * (Math.random() < 0.5 ? 1 : -1);
+        this.speedY = Math.random() * 2 + 1;
+        this.color = 'yellow';
+      }
+
+      draw() {
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y, this.size, this.size);
+      }
+
+      update() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+
+        if (this.x < 0 || this.x + this.size > canvas.width) {
+          this.speedX *= -1;
+        }
+
+        if (this.y < 0 || this.y + this.size > canvas.height / 2) {
+          this.speedY *= -1;
+        }
+      }
+
+      isClicked(mouseX, mouseY) {
+        return (
+          mouseX >= this.x &&
+          mouseX <= this.x + this.size &&
+          mouseY >= this.y &&
+          mouseY <= this.y + this.size
+        );
+      }
+    }
+
+    const ducks = [];
+
+    function spawnDuck() {
+      ducks.push(new Duck());
+    }
+
+    function updateGame() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ducks.forEach((duck, index) => {
+        duck.update();
+        duck.draw();
+
+        if (duck.y > canvas.height) {
+          ducks.splice(index, 1); // Remove duck if it flies off-screen
+        }
+      });
+
+      requestAnimationFrame(updateGame);
+    }
+
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      ducks.forEach((duck, index) => {
+        if (duck.isClicked(mouseX, mouseY)) {
+          ducks.splice(index, 1); // Remove the duck
+          score++;
+          scoreDisplay.textContent = score;
+        }
+      });
+    });
+
+    setInterval(spawnDuck, 1000); // Spawn a new duck every second
+    updateGame();
+  </script>
+</body>
+</html>
