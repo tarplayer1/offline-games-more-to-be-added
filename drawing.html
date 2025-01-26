@@ -51,6 +51,7 @@
             <button id="funkyButton">Funky Line</button>
             <button id="textButton">Text</button>
             <button id="drawButton">Draw</button>
+            <button id="uploadButton">Upload Image</button>
             <label for="colorPicker">Choose Color:</label>
             <input type="color" id="colorPicker" value="#000000">
             <label for="brushSize">Brush Size:</label>
@@ -70,6 +71,7 @@
         let isDraggingText = false;
         let offsetX, offsetY;
         let startX, startY; // for line drawing
+        let uploadedImage = null;
 
         // Start drawing, erasing, or adding shapes/text
         canvas.addEventListener('mousedown', (e) => {
@@ -216,6 +218,29 @@
         // Draw mode button
         document.getElementById('drawButton').addEventListener('click', () => {
             currentMode = 'draw'; // Switch to regular draw mode
+        });
+
+        // Upload PNG Image
+        document.getElementById('uploadButton').addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/png';
+            input.click();
+
+            input.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const img = new Image();
+                        img.onload = function() {
+                            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        };
+                        img.src = event.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
         });
 
         // Get a random color
