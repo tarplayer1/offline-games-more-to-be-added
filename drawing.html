@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale: 1.0">
+    <title>Drawing Website</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+
+        .container {
+            text-align: center;
+        }
+
+        #drawingCanvas {
+            border: 2px solid black;
+        }
+
+        .controls {
+            margin-top: 20px;
+        }
+
+        button, input {
+            padding: 10px;
+            margin: 5px;
+            font-size: 16px;
+        }
+
+        input[type="color"] {
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <canvas id="drawingCanvas" width="800" height="600"></canvas>
+        <div class="controls">
+            <button id="clearButton">Clear</button>
+            <button id="downloadButton">Download as PNG</button>
+            <button id="eraserButton">Eraser</button>
+            <button id="circleButton">Circle</button>
+            <button id="squareButton">Square</button>
+            <button id="lineButton">Straight Line</button>
+            <button id="funkyButton">Funky Line</button>
+            <button id="textButton">Text</button>
+            <button id="drawButton">Draw</button>
+            <label for="colorPicker">Choose Color:</label>
+            <input type="color" id="colorPicker" value="#000000">
+            <label for="brushSize">Brush Size:</label>
+            <input type="range" id="brushSize" min="1" max="50" value="5">
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d');
+        let drawing = false;
+        let brushColor = "#000000";
+        let brushSize = 5;
+        let currentMode = 'draw'; // draw, erase, text, circle, square, line, funky
+        let textInput = '';
+        let textPosition = { x: 100, y: 100 };
+        let isDraggingText = false;
+        let offsetX, offsetY;
+        let startX, startY; // for line drawing
+
+        // Start drawing, erasing, or adding shapes/text
+        canvas.addEventListener('mousedown', (e) => {
+            const mouseX = e.offsetX;
+            const mouseY = e.offsetY;
+            drawing = true;
+
+            if (currentMode === 'text') {
+                // Check if clicked on the text area to start dragging
+                if (mouseX >= textPosition.x && mouseX <= textPosition.x + ctx.measureText(textInput).width &&
+                    mouseY >= textPosition.y - brushSize && mouseY <= textPosition.y) {
+                    isDraggingText = true;
+                    offsetX = mouseX - textPosition.x;
+                    offsetY = mouseY - textPosition.y;
+                }
+            } else if (currentMode === 'line') {
+                // Starting point for straight line
+                startX = mouseX;
+                startY = mouseY;
+            } else if (currentMode === 'circle' || currentMode === 'square') {
+                // Click to add circle or square
+                const shape = {
+                    type: currentMode,
+                    x: mouseX,
+                    y: mouseY,
+                    size: brushSize
+                };
+                redrawCanvas();
+            } else {
+                ctx.beginPath();
+                ctx.moveTo(mouseX, mouseY);
+            }
+        });
+
+        // Draw, erase, or move text/shapes
+        canvas.addEventListener('mousemove', (e) => {
+            const mouseX = e.offsetX;
+            const mouseY = e.offsetY;
+
+            if (drawing) {
+                if (currentMode === 'draw') {
+                    // Regular draw line
+                    ctx.lineTo(mouseX, mouseY);
+                    ctx.strokeStyle = brushColor;
+                    ctx.lineWidth = brushSize;
+                    ctx.lineCap = 'round'; 
+                    ctx.stroke();
+                } else if (currentMode === 'erase') {
+                    // Erase
+                    ctx.clearRect(mouseX - brushSize / 2, mouseY - brushSize / 2, brushSize, brushSize);
+                } else if (currentMode === 'line') {
+                    // Draw the temporary line
+                    ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas temporarily
+                    redrawCanvas(); // Redraw existing shapes/text
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(mouseX, mouseY);
+                    ctx.strokeStyle = brushColor;
+                    ctx.lineWidth = brushSize;
+                    ctx.stroke();
+                } else if (isDraggingText) {
+                    // Move text
+                    textPosition.x = mouseX - offsetX;
+                    textPosition.y = mouseY - offsetY;
+                    redrawCanvas();
+                } else if (currentMode === 'funky') {
+                    // Funky Line: Randomly change the line thickness, color, and waviness
+                    ctx.lineTo(mouseX + (Math.random() - 0.5) * 10, mouseY + (Math.random() - 0.5) * 10); // Random wavy effect
+                    ctx.strokeStyle = getRandomColor();
+                    ctx.lineWidth = brushSize + Math.random() * 10; // Random line width
+                    ctx.lineCap = 'round';
+                    ctx.stroke();
+                }
+            }
+        });
+
+        // Stop drawing
+        canvas.addEventListener('mouseup', () => {
+            drawing = false;
+            isDraggingText = false;
+        });
+
+        // Update brush color
+        document.getElementById('colorPicker').addEventListener('input', (e) => {
+            brushColor = e.target.value;
+        });
+
+        // Update brush size
+        document.getElementById('brushSize').addEventListener('input', (e) => {
+            brushSize = e.target.value;
+        });
+
+        // Clear the canvas
+        document.getElementById('clearButton').addEventListener('click', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            textPosition = { x: 100, y: 100 }; // Reset text position
+            redrawCanvas();
+        });
+
+        // Download the canvas as PNG
+        document.getElementById('downloadButton').addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'drawing.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        });
+
+        // Eraser mode
+        document.getElementById('eraserButton').addEventListener('click', () => {
+            currentMode = (currentMode === 'erase') ? 'draw' : 'erase'; // Toggle between draw and erase
+        });
+
+        // Circle brush mode
+        document.getElementById('circleButton').addEventListener('click', () => {
+            currentMode = 'circle'; // Set to circle mode
+        });
+
+        // Square brush mode
+        document.getElementById('squareButton').addEventListener('click', () => {
+            currentMode = 'square'; // Set to square mode
+        });
+
+        // Line mode
+        document.getElementById('lineButton').addEventListener('click', () => {
+            currentMode = 'line'; // Set to line mode
+        });
+
+        // Funky Line mode
+        document.getElementById('funkyButton').addEventListener('click', () => {
+            currentMode = 'funky'; // Set to funky line mode
+        });
+
+        // Text mode
+        document.getElementById('textButton').addEventListener('click', () => {
+            currentMode = 'text'; // Set to text mode
+            textInput = prompt('Enter the text:');
+            if (textInput) {
+                ctx.font = `${brushSize}px Arial`;
+                ctx.fillStyle = brushColor;
+                ctx.fillText(textInput, textPosition.x, textPosition.y); // Draw text at initial position
+            }
+        });
+
+        // Draw mode button
+        document.getElementById('drawButton').addEventListener('click', () => {
+            currentMode = 'draw'; // Switch to regular draw mode
+        });
+
+        // Get a random color
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+
+        // Redraw the canvas (including shapes and text)
+        function redrawCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
+            if (textInput) {
+                ctx.font = `${brushSize}px Arial`;
+                ctx.fillStyle = brushColor;
+                ctx.fillText(textInput, textPosition.x, textPosition.y);
+            }
+        }
+    </script>
+</body>
+</html>
