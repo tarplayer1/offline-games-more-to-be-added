@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Breakout Game</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+        #gameArea {
+            width: 800px;
+            height: 400px;
+            background-color: #333;
+            position: relative;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+        .brick {
+            width: 75px;
+            height: 20px;
+            background-color: #FF6347;
+            position: absolute;
+        }
+        #paddle {
+            width: 100px;
+            height: 20px;
+            background-color: #00BFFF;
+            position: absolute;
+            bottom: 0;
+            left: 350px;
+        }
+        #ball {
+            width: 15px;
+            height: 15px;
+            background-color: #FFD700;
+            border-radius: 50%;
+            position: absolute;
+            bottom: 40px;
+            left: 400px;
+        }
+        #score {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 20px;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameArea">
+        <div id="score">Score: 0</div>
+        <div id="paddle"></div>
+        <div id="ball"></div>
+    </div>
+
+    <script>
+        // Game variables
+        const gameArea = document.getElementById('gameArea');
+        const paddle = document.getElementById('paddle');
+        const ball = document.getElementById('ball');
+        const scoreDisplay = document.getElementById('score');
+
+        let score = 0;
+        let ballSpeedX = 1.5; // Slower ball speed
+        let ballSpeedY = -1.5; // Slower ball speed
+        let paddleSpeed = 0; // Starting paddle speed (no movement initially)
+        let maxSpeed = 10; // Faster max speed for paddle
+        let acceleration = 0.5; // Increased acceleration for faster paddle
+        let deceleration = 0.1; // Reduced deceleration for paddle
+        let ballPositionX = 400;
+        let ballPositionY = 40;
+        let paddlePositionX = 350;
+        let isGameOver = false;
+
+        // Create bricks
+        const bricks = [];
+        for (let row = 0; row < 3; row++) {
+            for (let col = 0; col < 10; col++) {
+                let brick = document.createElement('div');
+                brick.classList.add('brick');
+                brick.style.top = `${row * 30 + 30}px`;
+                brick.style.left = `${col * 80 + 10}px`;
+                gameArea.appendChild(brick);
+                bricks.push(brick);
+            }
+        }
+
+        // Arrow key controls for paddle movement
+        let leftKeyDown = false;
+        let rightKeyDown = false;
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'ArrowLeft') {
+                leftKeyDown = true;
+            } else if (event.key === 'ArrowRight') {
+                rightKeyDown = true;
+            }
+        });
+
+        document.addEventListener('keyup', (event) => {
+            if (event.key === 'ArrowLeft') {
+                leftKeyDown = false;
+            } else if (event.key === 'ArrowRight') {
+                rightKeyDown = false;
+            }
+        });
+
+        // Ball movement and collision detection
+        function gameLoop() {
+            if (isGameOver) return;
+
+            // Acceleration and deceleration logic for paddle
+            if (leftKeyDown && paddleSpeed > -maxSpeed) {
+                paddleSpeed -= acceleration; // Accelerate left
+            } else if (rightKeyDown && paddleSpeed < maxSpeed) {
+                paddleSpeed += acceleration; // Accelerate right
+            } else {
+                // Decelerate if no key is pressed
+                if (paddleSpeed > 0) {
+                    paddleSpeed -= deceleration;
+                } else if (paddleSpeed < 0) {
+                    paddleSpeed += deceleration;
+                }
+            }
+
+            // Keep paddle within game area
+            if (paddlePositionX + paddleSpeed < 0) paddleSpeed = -paddlePositionX;
+            if (paddlePositionX + paddleSpeed > gameArea.offsetWidth - paddle.offsetWidth) paddleSpeed = gameArea.offsetWidth - paddle.offsetWidth - paddlePositionX;
+
+            paddlePositionX += paddleSpeed;
+            paddle.style.left = paddlePositionX + 'px';
+
+            // Ball movement
+            ballPositionX += ballSpeedX;
+            ballPositionY += ballSpeedY;
+
+            // Ball-wall collision
+            if (ballPositionX <= 0 || ballPositionX >= gameArea.offsetWidth - ball.offsetWidth) {
+                ballSpeedX = -ballSpeedX;
+            }
+            if (ballPositionY <= 0) {
+                ballSpeedY = -ballSpeedY;
+            }
+
+            // Ball-paddle collision
+            let paddleRect = paddle.getBoundingClientRect();
+            let ballRect = ball.getBoundingClientRect();
+            if (ballRect.bottom >= paddleRect.top && ballRect.right >= paddleRect.left && ballRect.left <= paddleRect.right) {
+                ballSpeedY = -ballSpeedY;
+                ballSpeedX = (ballPositionX - paddlePositionX - paddle.offsetWidth / 2) / 5;
+            }
+
+            // Ball-brick collision
+            bricks.forEach((brick, index) => {
+                let brickRect = brick.getBoundingClientRect();
+                if (ballRect.bottom >= brickRect.top && ballRect.top <= brickRect.bottom && ballRect.right >= brickRect.left && ballRect.left <= brickRect.right) {
+                    ballSpeedY = -ballSpeedY;
+                    brick.style.display = 'none'; // Remove brick
+                    bricks.splice(index, 1); // Remove brick from array
+                    score += 10;
+                    scoreDisplay.textContent = `Score: ${score}`;
+                }
+            });
+
+            // Ball out of bounds (Game over)
+            if (ballPositionY >= gameArea.offsetHeight) {
+                isGameOver = true;
+                alert("Game Over! Your score is " + score);
+            }
+
+            // Update ball position
+            ball.style.left = ballPositionX + 'px';
+            ball.style.bottom = ballPositionY + 'px';
+
+            // Call gameLoop recursively for smooth animation
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop(); // Start the game loop
+    </script>
+</body>
+</html>

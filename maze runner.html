@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maze Runner Game</title>
+    <style>
+        /* Blur effect for the touch grass message */
+        .blurred-message {
+            filter: blur(5px);
+        }
+    </style>
+</head>
+<body>
+    <h1>Maze Runner Game</h1>
+
+    <div style="display: grid; grid-template-columns: repeat(12, 50px); grid-template-rows: repeat(12, 50px); gap: 2px;">
+        <!-- Maze Grid (12x12) -->
+        <!-- The cells will be created dynamically via JavaScript -->
+    </div>
+
+    <script>
+        const gridSize = 12;
+        const gridContainer = document.querySelector('div');
+        const wallPercentage = 0.2;  // 20% of the grid will be walls
+        let level = 1;  // Track the current level
+
+        // Initialize the grid
+        const grid = [];
+        for (let y = 0; y < gridSize; y++) {
+            for (let x = 0; x < gridSize; x++) {
+                const cell = document.createElement('div');
+                cell.id = `cell-${y}-${x}`;
+                cell.style.width = '50px';
+                cell.style.height = '50px';
+                cell.style.backgroundColor = 'lightgray';
+                cell.style.border = '1px solid black';
+                gridContainer.appendChild(cell);
+                grid.push({ x, y, element: cell });
+            }
+        }
+
+        // Initial positions for player, door, and walls
+        let playerPosition = { x: 0, y: 0 };
+        let doorPosition = { x: Math.floor(Math.random() * gridSize), y: Math.floor(Math.random() * gridSize) };
+        let walls = [];
+
+        // Create walls at random positions
+        function createWalls() {
+            walls = [];
+            for (let i = 0; i < gridSize * gridSize * wallPercentage; i++) {
+                let wallX = Math.floor(Math.random() * gridSize);
+                let wallY = Math.floor(Math.random() * gridSize);
+                // Prevent walls from overlapping with the player or door
+                if ((wallX !== playerPosition.x || wallY !== playerPosition.y) &&
+                    (wallX !== doorPosition.x || wallY !== doorPosition.y) &&
+                    !walls.some(wall => wall.x === wallX && wall.y === wallY)) {
+                    walls.push({ x: wallX, y: wallY });
+                }
+            }
+        }
+
+        // Set player, door, and walls on the grid
+        function renderGame() {
+            grid.forEach(cell => cell.element.style.backgroundColor = 'lightgray'); // Reset the grid
+
+            // Set player and door positions
+            document.getElementById(`cell-${playerPosition.y}-${playerPosition.x}`).style.backgroundColor = 'red'; // Player
+            document.getElementById(`cell-${doorPosition.y}-${doorPosition.x}`).style.backgroundColor = 'green'; // Door
+
+            // Set walls
+            walls.forEach(wall => {
+                document.getElementById(`cell-${wall.y}-${wall.x}`).style.backgroundColor = 'black'; // Wall
+            });
+        }
+
+        createWalls();
+        renderGame();
+
+        // Movement functions
+        function moveUp() {
+            if (playerPosition.y > 0 && !isWall(playerPosition.x, playerPosition.y - 1)) {
+                playerPosition.y -= 1;
+                renderGame();
+                checkWin();
+            }
+        }
+
+        function moveDown() {
+            if (playerPosition.y < gridSize - 1 && !isWall(playerPosition.x, playerPosition.y + 1)) {
+                playerPosition.y += 1;
+                renderGame();
+                checkWin();
+            }
+        }
+
+        function moveLeft() {
+            if (playerPosition.x > 0 && !isWall(playerPosition.x - 1, playerPosition.y)) {
+                playerPosition.x -= 1;
+                renderGame();
+                checkWin();
+            }
+        }
+
+        function moveRight() {
+            if (playerPosition.x < gridSize - 1 && !isWall(playerPosition.x + 1, playerPosition.y)) {
+                playerPosition.x += 1;
+                renderGame();
+                checkWin();
+            }
+        }
+
+        // Check if there's a wall at the given position
+        function isWall(x, y) {
+            return walls.some(wall => wall.x === x && wall.y === y);
+        }
+
+        // Check if the player has reached the door
+        function checkWin() {
+            if (playerPosition.x === doorPosition.x && playerPosition.y === doorPosition.y) {
+                level += 1; // Increase level
+                alert(`Level ${level - 1} completed! Welcome to Level ${level}`);
+                if (level === 100) {
+                    // Trigger "touch grass" message after 100 levels
+                    const message = document.createElement('div');
+                    message.textContent = "GO TOUCH FUCKING GRASS I BET YOU DONT EVEN KNO WHAT IT IS!!";
+                    message.style.fontSize = '24px';
+                    message.style.fontWeight = 'bold';
+                    message.classList.add('blurred-message');  // Apply blur effect
+                    document.body.appendChild(message);
+                }
+                resetGame();
+            }
+        }
+
+        // Reset the game for the next level
+        function resetGame() {
+            playerPosition = { x: 0, y: 0 };
+            doorPosition = { x: Math.floor(Math.random() * gridSize), y: Math.floor(Math.random() * gridSize) };
+            createWalls();
+            renderGame();
+        }
+
+        // Listen for arrow key presses
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'ArrowUp') {
+                moveUp();
+            } else if (event.key === 'ArrowDown') {
+                moveDown();
+            } else if (event.key === 'ArrowLeft') {
+                moveLeft();
+            } else if (event.key === 'ArrowRight') {
+                moveRight();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tic-Tac-Toe</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #f0f0f0;
+      flex-direction: column;
+    }
+    .board {
+      display: grid;
+      gap: 5px;
+      border: 5px solid #333;
+      margin-bottom: 20px;
+    }
+    .square {
+      width: 50px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #fff;
+      font-size: 36px;
+      font-weight: bold;
+      cursor: pointer;
+      border: 2px solid #333;
+      user-select: none;
+    }
+    .square.disabled {
+      pointer-events: none;
+      background-color: #ddd;
+    }
+    .message {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+    .controls {
+      margin-bottom: 20px;
+    }
+    .controls button {
+      font-size: 16px;
+      padding: 10px;
+      margin: 5px;
+    }
+    .difficulty {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="controls">
+  <button onclick="chooseSize('small')">Small (3x3)</button>
+  <button onclick="chooseSize('medium')">Medium (5x5)</button>
+  <button onclick="chooseSize('big')">Big (7x7)</button>
+</div>
+
+<div id="sizeOptions" class="controls"></div>
+<div id="playerAIOptions" class="controls"></div>
+<div id="aiDifficultyOptions" class="difficulty"></div>
+<div class="board" id="board"></div>
+<div class="message" id="message">Choose a board size!</div>
+
+<script>
+  let board = [];
+  let currentPlayer;
+  let gameOver;
+  let size;
+  let mode;
+  let aiDifficulty;
+
+  const boardElement = document.getElementById('board');
+  const messageElement = document.getElementById('message');
+  const sizeOptionsElement = document.getElementById('sizeOptions');
+  const playerAIOptionsElement = document.getElementById('playerAIOptions');
+  const aiDifficultyOptionsElement = document.getElementById('aiDifficultyOptions');
+
+  // Choose board size (small, medium, big)
+  function chooseSize(selectedSize) {
+    size = selectedSize;
+    sizeOptionsElement.innerHTML = '';  // Clear previous options
+    playerAIOptionsElement.innerHTML = `
+      <button onclick="startGame('p')">2 Player Mode</button>
+      <button onclick="startGame('a')">AI Mode</button>
+    `;
+    messageElement.textContent = `You selected a ${size} board. Now, choose Player or AI.`;
+  }
+
+  // Start the game based on the selected mode
+  function startGame(selectedMode) {
+    mode = selectedMode;
+    board = createEmptyBoard(size);
+    currentPlayer = 'X';
+    gameOver = false;
+    aiDifficulty = '';
+    playerAIOptionsElement.innerHTML = '';
+    aiDifficultyOptionsElement.innerHTML = '';
+    
+    if (mode === 'a') {
+      aiDifficultyOptionsElement.innerHTML = `
+        <button onclick="chooseDifficulty('easy')">Easy</button>
+        <button onclick="chooseDifficulty('medium')">Medium</button>
+        <button onclick="chooseDifficulty('hard')">Hard</button>
+        <button onclick="chooseDifficulty('god')">God</button>
+      `;
+      messageElement.textContent = `You selected AI. Choose AI difficulty.`;
+    } else {
+      messageElement.textContent = `Player X's turn.`;
+      renderBoard();
+    }
+  }
+
+  // Choose AI difficulty
+  function chooseDifficulty(selectedDifficulty) {
+    aiDifficulty = selectedDifficulty;
+    aiDifficultyOptionsElement.innerHTML = '';
+    messageElement.textContent = `You selected ${aiDifficulty} difficulty. Player X's turn.`;
+    renderBoard();
+  }
+
+  // Create an empty board based on the selected size
+  function createEmptyBoard(size) {
+    let boardSize;
+    if (size === 'small') boardSize = 3;
+    if (size === 'medium') boardSize = 5;
+    if (size === 'big') boardSize = 7;
+
+    return Array.from({ length: boardSize }, () => Array(boardSize).fill(''));
+  }
+
+  // Render the board
+  function renderBoard() {
+    boardElement.innerHTML = '';
+    const boardSize = board.length;
+    boardElement.style.gridTemplateColumns = `repeat(${boardSize}, 50px)`;
+    boardElement.style.gridTemplateRows = `repeat(${boardSize}, 50px)`;
+
+    board.forEach((row, rowIndex) => {
+      row.forEach((cell, colIndex) => {
+        const square = document.createElement('div');
+        square.classList.add('square');
+        square.textContent = cell;
+        square.addEventListener('click', () => handleClick(rowIndex, colIndex));
+        if (cell) square.classList.add('disabled');
+        boardElement.appendChild(square);
+      });
+    });
+  }
+
+  // Handle square click
+  function handleClick(row, col) {
+    if (gameOver || board[row][col]) return;
+    board[row][col] = currentPlayer;
+    if (checkWinner()) {
+      messageElement.textContent = `Player ${currentPlayer} wins!`;
+      gameOver = true;
+    } else if (board.flat().every(cell => cell)) {
+      messageElement.textContent = "It's a draw!";
+      gameOver = true;
+    } else {
+      currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+      messageElement.textContent = mode === 'a' && currentPlayer === 'O' ? `AI's turn` : `Player ${currentPlayer}'s turn`;
+      renderBoard();
+      if (mode === 'a' && currentPlayer === 'O' && !gameOver) aiMove();
+    }
+    renderBoard();
+  }
+
+  // AI makes a move based on difficulty
+  function aiMove() {
+    const emptySquares = [];
+    board.forEach((row, rowIndex) => {
+      row.forEach((cell, colIndex) => {
+        if (!cell) emptySquares.push([rowIndex, colIndex]);
+      });
+    });
+
+    let move;
+    if (aiDifficulty === 'easy') {
+      move = emptySquares[Math.floor(Math.random() * emptySquares.length)];
+    } else if (aiDifficulty === 'medium') {
+      // AI tries to block or make a winning move
+      move = emptySquares.find(([r, c]) => {
+        return checkMove(r, c, 'O') || checkMove(r, c, 'X');
+      }) || emptySquares[Math.floor(Math.random() * emptySquares.length)];
+    } else if (aiDifficulty === 'hard' || aiDifficulty === 'god') {
+      move = hardAI();
+    }
+
+    board[move[0]][move[1]] = 'O';
+    if (checkWinner()) {
+      messageElement.textContent = "AI wins!";
+      gameOver = true;
+    } else if (board.flat().every(cell => cell)) {
+      messageElement.textContent = "It's a draw!";
+      gameOver = true;
+    } else {
+      currentPlayer = 'X';
+      messageElement.textContent = `Player X's turn`;
+    }
+    renderBoard();
+  }
+
+  // Check AI move for blocking/winning (simple version)
+  function checkMove(row, col, player) {
+    const tempBoard = JSON.parse(JSON.stringify(board));
+    tempBoard[row][col] = player;
+    return checkWinner(tempBoard);
+  }
+
+  // A simple "hard" AI that tries to win if possible
+  function hardAI() {
+    const emptySquares = [];
+    board.forEach((row, rowIndex) => {
+      row.forEach((cell, colIndex) => {
+        if (!cell) emptySquares.push([rowIndex, colIndex]);
+      });
+    });
+    return emptySquares[Math.floor(Math.random() * emptySquares.length)];
+  }
+
+  // Function to check if a player has won
+  function checkWinner() {
+    const boardSize = board.length;
+    // Check rows, columns, and diagonals
+    for (let i = 0; i < boardSize; i++) {
+      if (board[i].every(cell => cell === currentPlayer)) return true;
+      if (board.every(row => row[i] === currentPlayer)) return true;
+    }
+    if (board.every((row, index) => row[index] === currentPlayer)) return true;
+    if (board.every((row, index) => row[boardSize - 1 - index] === currentPlayer)) return true;
+    return false;
+  }
+</script>
+
+</body>
+</html>

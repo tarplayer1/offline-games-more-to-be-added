@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Block Blast Puzzle</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #eee;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(8, 50px);
+            grid-template-rows: repeat(8, 50px);
+            gap: 5px;
+            background-color: #333;
+        }
+
+        .block {
+            width: 50px;
+            height: 50px;
+            background-color: #ccc;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .red { background-color: #f00; }
+        .blue { background-color: #00f; }
+        .green { background-color: #0f0; }
+        .yellow { background-color: #ff0; }
+        .purple { background-color: #800080; }
+
+        #score {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="score">Score: 0</div>
+    <div id="game-board"></div>
+    <p>Match 3 or more blocks of the same color to clear them! Press <strong>R</strong> to reset.</p>
+
+    <script>
+        const boardSize = 8;
+        const colors = ['red', 'blue', 'green', 'yellow', 'purple'];
+        let board = [];
+        let score = 0;
+
+        // Create the game board
+        function createBoard() {
+            const gameBoard = document.getElementById('game-board');
+            gameBoard.innerHTML = ''; // Clear the previous board
+            board = [];
+            for (let y = 0; y < boardSize; y++) {
+                const row = [];
+                for (let x = 0; x < boardSize; x++) {
+                    const color = colors[Math.floor(Math.random() * colors.length)];
+                    const block = document.createElement('div');
+                    block.classList.add('block', color);
+                    block.dataset.x = x;
+                    block.dataset.y = y;
+                    block.addEventListener('click', () => blockClicked(x, y));
+                    gameBoard.appendChild(block);
+                    row.push(color);
+                }
+                board.push(row);
+            }
+        }
+
+        // Handle block clicks
+        function blockClicked(x, y) {
+            const color = board[y][x];
+            // Check for horizontal and vertical matches
+            const matches = getMatches(x, y, color);
+            if (matches.length >= 3) {
+                clearMatches(matches);
+            }
+        }
+
+        // Get all blocks that match the clicked block
+        function getMatches(x, y, color) {
+            let matches = [];
+            // Check horizontal
+            for (let i = 0; i < boardSize; i++) {
+                if (board[y][i] === color) {
+                    matches.push({x: i, y: y});
+                }
+            }
+
+            // Check vertical
+            for (let i = 0; i < boardSize; i++) {
+                if (board[i][x] === color) {
+                    matches.push({x: x, y: i});
+                }
+            }
+
+            return matches;
+        }
+
+        // Clear matched blocks and update the board
+        function clearMatches(matches) {
+            matches.forEach(match => {
+                const block = document.querySelector(`[data-x="${match.x}"][data-y="${match.y}"]`);
+                block.classList.add('hidden');
+                board[match.y][match.x] = null;  // Remove matched block from board
+            });
+            updateScore(matches.length);
+            dropBlocks();
+        }
+
+        // Drop blocks to fill empty spaces
+        function dropBlocks() {
+            for (let x = 0; x < boardSize; x++) {
+                for (let y = boardSize - 1; y >= 0; y--) {
+                    if (board[y][x] === null) {
+                        for (let k = y - 1; k >= 0; k--) {
+                            if (board[k][x] !== null) {
+                                board[y][x] = board[k][x];
+                                const block = document.querySelector(`[data-x="${x}"][data-y="${k}"]`);
+                                block.dataset.y = y;
+                                block.classList.remove(...colors);
+                                block.classList.add(board[y][x]);
+                                board[k][x] = null;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            generateNewBlocks();
+        }
+
+        // Generate new blocks to fill empty spaces
+        function generateNewBlocks() {
+            for (let x = 0; x < boardSize; x++) {
+                for (let y = 0; y < boardSize; y++) {
+                    if (board[y][x] === null) {
+                        const color = colors[Math.floor(Math.random() * colors.length)];
+                        board[y][x] = color;
+                        const block = document.querySelector(`[data-x="${x}"][data-y="${y}"]`);
+                        block.classList.remove(...colors);
+                        block.classList.add(color);
+                    }
+                }
+            }
+        }
+
+        // Update score
+        function updateScore(matchLength) {
+            score += matchLength * 10;
+            document.getElementById('score').textContent = `Score: ${score}`;
+        }
+
+        // Reset the game
+        function resetGame() {
+            score = 0;
+            document.getElementById('score').textContent = `Score: ${score}`;
+            createBoard();
+        }
+
+        // Handle key press for reset
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'r' || e.key === 'R') {
+                resetGame();
+            }
+        });
+
+        // Initialize the game
+        createBoard();
+
+    </script>
+
+</body>
+</html>

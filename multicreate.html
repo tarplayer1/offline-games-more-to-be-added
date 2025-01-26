@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multicreate Save/Load</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+
+    canvas {
+      display: block;
+      background-color: #87CEEB;
+    }
+
+    #ui {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(255, 255, 255, 0.8);
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    #ui.hidden {
+      display: none;
+    }
+
+    #ui button {
+      margin: 5px;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    #blockList {
+      position: absolute;
+      top: 100px;
+      left: 10px;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      display: none;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .block-item {
+      padding: 5px;
+      cursor: pointer;
+      margin-bottom: 5px;
+      border-radius: 5px;
+    }
+
+    .block-item:hover {
+      background-color: #f0f0f0;
+    }
+  </style>
+</head>
+<body>
+  <div id="ui">
+    <h3>Game Controls</h3>
+    <p>Middle click to cycle through blocks. Left click to remove a block. Right click to place a block. Use arrow keys to move the player.</p>
+    <button id="resetButton">Reset World</button>
+    <button id="resetPlayerButton">Reset Player</button>
+    <button id="saveButton">Save World as TXT</button>
+    <button onclick="saveWorld()">Save World as JSON</button>
+  </div>
+  
+  <div id="blockList"></div>
+  <canvas id="gameCanvas"></canvas>
+  <input type="file" id="importFile" style="display: none;" accept=".json" onchange="handleFileUpload(event)" />
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const blockSize = 50;
+    const world = [];
+    const blockTypes = [
+      { name: "Grass", color: "#228B22" },
+      { name: "Dirt", color: "#8B4513" },
+      { name: "Stone", color: "#808080" },
+      { name: "Sand", color: "#FFD700" },
+      { name: "Wood", color: "#A0522D" },
+      { name: "Water", color: "#1E90FF" },
+      { name: "Lava", color: "#FF4500" },
+      { name: "Brick", color: "#B22222" },
+      { name: "Coal", color: "#2F4F4F" },
+      { name: "Gold", color: "#FFD700" },
+      { name: "Iron", color: "#D4AF37" },
+      { name: "Diamond", color: "#00CED1" },
+      { name: "Emerald", color: "#50C878" },
+      { name: "Obsidian", color: "#2B1B17" },
+      { name: "Snow", color: "#FFFFFF" },
+      { name: "Clay", color: "#B0E0E6" },
+      { name: "Mossy Stone", color: "#556B2F" },
+      { name: "Netherite", color: "#3C3C3C" },
+      { name: "Quartz", color: "#F5F5F5" },
+      { name: "Glowstone", color: "#FFCC00" },  
+      { name: "Sandstone", color: "#F4A300" }, 
+      { name: "Netherrack", color: "#B22222" } 
+    ];
+    let currentBlockType = 0;
+    const player = {
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      width: blockSize,
+      height: blockSize,
+      color: "#FFDF00",
+      speed: 5,
+      gameMode: "Survival"
+    };
+
+    const ui = document.getElementById("ui");
+    const blockList = document.getElementById("blockList");
+
+    let playerVisible = true;
+
+    function generateWorld() {
+      world.length = 0;
+      for (let x = 0; x < canvas.width / blockSize; x++) {
+        for (let y = 0; y < canvas.height / blockSize; y++) {
+          if (y > canvas.height / blockSize - 3) {
+            world.push({ x: x * blockSize, y: y * blockSize, color: "#8B4513" });
+          } else if (y === canvas.height / blockSize - 3) {
+            world.push({ x: x * blockSize, y: y * blockSize, color: "#228B22" });
+          }
+        }
+      }
+    }
+
+    function drawWorld() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      world.forEach(block => {
+        ctx.fillStyle = block.color;
+        ctx.fillRect(block.x, block.y, blockSize, blockSize);
+        ctx.strokeStyle = "#000";
+        ctx.strokeRect(block.x, block.y, blockSize, blockSize);
+      });
+
+      if (playerVisible) drawPlayer();
+    }
+
+    function drawPlayer() {
+      ctx.fillStyle = player.color;
+      ctx.fillRect(player.x, player.y, player.width, player.height);
+    }
+
+    function handleMouseClick(event) {
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = event.clientX - rect.left;
+      const mouseY = event.clientY - rect.top;
+
+      if (event.button === 0) {
+        for (let i = 0; i < world.length; i++) {
+          if (
+            mouseX >= world[i].x &&
+            mouseX < world[i].x + blockSize &&
+            mouseY >= world[i].y &&
+            mouseY < world[i].y + blockSize
+          ) {
+            world.splice(i, 1);
+            break;
+          }
+        }
+      } else if (event.button === 2) {
+        const gridX = Math.floor(mouseX / blockSize) * blockSize;
+        const gridY = Math.floor(mouseY / blockSize) * blockSize;
+
+        if (!world.some(block => block.x === gridX && block.y === gridY)) {
+          world.push({ x: gridX, y: gridY, color: blockTypes[currentBlockType].color });
+        }
+      }
+
+      drawWorld();
+    }
+
+    function handleMiddleClick(event) {
+      if (event.button === 1) {
+        event.preventDefault();
+        currentBlockType = (currentBlockType + 1) % blockTypes.length;
+        console.log(`Current block: ${blockTypes[currentBlockType].name}`);
+      }
+    }
+
+    function handleKeyPress(event) {
+      switch (event.key) {
+        case "ArrowUp":
+          player.y = Math.max(0, player.y - player.speed);
+          break;
+        case "ArrowDown":
+          player.y = Math.min(canvas.height - player.height, player.y + player.speed);
+          break;
+        case "ArrowLeft":
+          player.x = Math.max(0, player.x - player.speed);
+          break;
+        case "ArrowRight":
+          player.x = Math.min(canvas.width - player.width, player.x + player.speed);
+          break;
+        case "f":
+          ui.classList.toggle("hidden");
+          break;
+        case "g":
+          playerVisible = !playerVisible;
+          break;
+        case "c":
+          toggleBlockList();
+          break;
+        case "z":
+          saveWorldAsTxt();
+          break;
+        case "b":
+          document.getElementById("importFile").click();
+          break;
+      }
+      drawWorld();
+    }
+
+    function toggleBlockList() {
+      blockList.style.display = blockList.style.display === "none" ? "block" : "none";
+      if (blockList.style.display === "block") {
+        blockList.innerHTML = "";
+        blockTypes.forEach((block, index) => {
+          const blockElement = document.createElement("div");
+          blockElement.className = "block-item";
+          blockElement.innerHTML = block.name;
+          blockElement.style.backgroundColor = block.color;
+          blockElement.addEventListener("click", () => {
+            currentBlockType = index;
+            blockList.style.display = "none";
+          });
+          blockList.appendChild(blockElement);
+        });
+      }
+    }
+
+    function resetWorld() {
+      generateWorld();
+      drawWorld();
+    }
+
+    function resetPlayer() {
+      player.x = canvas.width / 2 - player.width / 2;
+      player.y = canvas.height / 2 - player.height / 2;
+      drawWorld();
+    }
+
+    function saveWorldAsTxt() {
+      const worldData = JSON.stringify(world);
+      const gameMode = player.gameMode;
+
+      let txtContent = `Game Mode: ${gameMode}\n\nBlocks:\n`;
+      world.forEach(block => {
+        txtContent += `Position: (${block.x}, ${block.y}), Block: ${block.color}\n`;
+      });
+
+      const blob = new Blob([txtContent], { type: 'text/plain' });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "world_data.txt";
+      link.click();
+    }
+
+    function saveWorld() {
+      const worldData = {
+        world: {
+          blocks: world.map(block => ({ x: block.x, y: block.y, color: block.color })),
+          player: { position: [player.x, player.y], color: player.color }
+        }
+      };
+
+      const jsonData = JSON.stringify(worldData);
+
+      const blob = new Blob([jsonData], { type: 'application/json' });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "world_data.json";
+      link.click();
+    }
+
+    function loadWorldFromJson(json) {
+      const worldData = JSON.parse(json);
+
+      world.length = 0;
+      worldData.world.blocks.forEach(block => {
+        world.push({ x: block.x, y: block.y, color: block.color });
+      });
+
+      player.x = worldData.world.player.position[0];
+      player.y = worldData.world.player.position[1];
+      player.color = worldData.world.player.color;
+
+      drawWorld();
+    }
+
+    function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        loadWorldFromJson(reader.result);
+      };
+      reader.readAsText(file);
+    }
+
+    // Disable right-click context menu
+    document.addEventListener('contextmenu', function(event) {
+      event.preventDefault();
+    });
+
+    canvas.addEventListener("mousedown", handleMouseClick);
+    canvas.addEventListener("auxclick", handleMiddleClick);
+    window.addEventListener("keydown", handleKeyPress);
+    document.getElementById("resetButton").addEventListener("click", resetWorld);
+    document.getElementById("resetPlayerButton").addEventListener("click", resetPlayer);
+
+    generateWorld();
+    drawWorld();
+  </script>
+</body>
+</html>
+

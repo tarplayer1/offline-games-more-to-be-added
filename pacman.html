@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pac-Man</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: black;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            display: block;
+            background-color: #000;
+            border: 2px solid #fff;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const gridSize = 20;
+        const rows = 15;
+        const cols = 15;
+        canvas.width = cols * gridSize;
+        canvas.height = rows * gridSize;
+
+        // Pac-Man settings
+        let pacman = { x: 1.5, y: 1.5, direction: { x: 0, y: 0 }, speed: 2 };
+        let score = 0;
+        let level = 1;
+        let gameOver = false;
+
+        // Ghosts
+        const ghosts = [
+            { x: 13, y: 1, color: "red", speed: 1 },
+            { x: 13, y: 13, color: "pink", speed: 1 }
+        ];
+
+        const deathMessages = [
+            "You got the AIDS!",
+            "Uh oh, you paid your taxes!",
+            "The ghosts got you—better luck next time!",
+            "You became ghost food!",
+            "Oops, Pac-Man had a bad day!"
+        ];
+
+        // Game grid (1 = wall, 0 = dot, 2 = empty space)
+        let grid;
+
+        function generateRandomGrid() {
+            const newGrid = [];
+            for (let y = 0; y < rows; y++) {
+                const row = [];
+                for (let x = 0; x < cols; x++) {
+                    if (
+                        y === 0 ||
+                        y === rows - 1 ||
+                        x === 0 ||
+                        x === cols - 1 ||
+                        Math.random() < 0.2
+                    ) {
+                        row.push(1); // Wall
+                    } else {
+                        row.push(0); // Dot
+                    }
+                }
+                newGrid.push(row);
+            }
+
+            // Ensure Pac-Man's starting position and ghost positions are clear
+            newGrid[1][1] = 2;
+            newGrid[1][13] = 2;
+            newGrid[13][1] = 2;
+            newGrid[13][13] = 2;
+
+            return newGrid;
+        }
+
+        function resetGame() {
+            grid = generateRandomGrid();
+            pacman = { x: 1.5, y: 1.5, direction: { x: 0, y: 0 }, speed: 2 };
+            ghosts.forEach((ghost, index) => {
+                ghost.x = index === 0 ? 13 : 13;
+                ghost.y = index === 0 ? 1 : 13;
+            });
+            score = 0;
+            gameOver = false;
+        }
+
+        function drawGrid() {
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    if (grid[y][x] === 1) {
+                        ctx.fillStyle = "#444";
+                        ctx.fillRect(x * gridSize, y * gridSize, gridSize, gridSize);
+                    } else if (grid[y][x] === 0) {
+                        ctx.fillStyle = "#ff0";
+                        ctx.beginPath();
+                        ctx.arc(
+                            x * gridSize + gridSize / 2,
+                            y * gridSize + gridSize / 2,
+                            3,
+                            0,
+                            Math.PI * 2
+                        );
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+
+        function drawPacman() {
+            ctx.fillStyle = "yellow";
+            ctx.beginPath();
+            ctx.arc(
+                pacman.x * gridSize,
+                pacman.y * gridSize,
+                gridSize / 2 - 2,
+                0.2 * Math.PI,
+                1.8 * Math.PI
+            );
+            ctx.lineTo(pacman.x * gridSize, pacman.y * gridSize);
+            ctx.fill();
+        }
+
+        function drawGhosts() {
+            ghosts.forEach(ghost => {
+                ctx.fillStyle = ghost.color;
+                ctx.fillRect(
+                    ghost.x * gridSize + 4,
+                    ghost.y * gridSize + 4,
+                    gridSize - 8,
+                    gridSize - 8
+                );
+            });
+        }
+
+        function movePacman() {
+            if (gameOver) return;
+
+            const nextX = pacman.x + (pacman.direction.x * pacman.speed) / gridSize;
+            const nextY = pacman.y + (pacman.direction.y * pacman.speed) / gridSize;
+
+            const tileX = Math.floor(nextX);
+            const tileY = Math.floor(nextY);
+
+            if (grid[tileY][tileX] !== 1) {
+                pacman.x = nextX;
+                pacman.y = nextY;
+
+                // Eat dots
+                if (grid[tileY][tileX] === 0) {
+                    grid[tileY][tileX] = 2;
+                    score++;
+                }
+            }
+        }
+
+        function moveGhosts() {
+            ghosts.forEach(ghost => {
+                const dx = pacman.x - ghost.x;
+                const dy = pacman.y - ghost.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist > 0) {
+                    const moveX = Math.round(dx / dist);
+                    const moveY = Math.round(dy / dist);
+
+                    const nextX = ghost.x + (moveX * ghost.speed) / gridSize;
+                    const nextY = ghost.y + (moveY * ghost.speed) / gridSize;
+
+                    const tileX = Math.floor(nextX);
+                    const tileY = Math.floor(nextY);
+
+                    if (grid[tileY][tileX] !== 1) {
+                        ghost.x = nextX;
+                        ghost.y = nextY;
+                    }
+                }
+
+                // Check for collision with Pac-Man
+                if (
+                    Math.abs(ghost.x - pacman.x) < 0.5 &&
+                    Math.abs(ghost.y - pacman.y) < 0.5
+                ) {
+                    gameOver = true;
+                    alert(
+                        deathMessages[
+                            Math.floor(Math.random() * deathMessages.length)
+                        ]
+                    );
+                    resetGame();
+                }
+            });
+        }
+
+        function drawScore() {
+            ctx.fillStyle = "white";
+            ctx.font = "18px Arial";
+            ctx.fillText(`Score: ${score}`, 10, canvas.height - 10);
+        }
+
+        function gameLoop() {
+            if (!gameOver) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                drawGrid();
+                drawPacman();
+                drawGhosts();
+                drawScore();
+
+                movePacman();
+                moveGhosts();
+
+                // Check if score threshold is reached
+                if (score >= 70) {
+                    level++;
+                    alert(`Level ${level} starts!`);
+                    resetGame();
+                }
+
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        document.addEventListener("keydown", event => {
+            const directions = {
+                ArrowUp: { x: 0, y: -1 },
+                ArrowDown: { x: 0, y: 1 },
+                ArrowLeft: { x: -1, y: 0 },
+                ArrowRight: { x: 1, y: 0 }
+            };
+
+            if (directions[event.key]) {
+                pacman.direction = directions[event.key];
+            }
+
+            if (event.key === "r") {
+                resetGame();
+            }
+        });
+
+        resetGame();
+        gameLoop();
+    </script>
+</body>
+</html>

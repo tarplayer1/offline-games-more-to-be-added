@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2048 Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(4, 100px);
+            grid-template-rows: repeat(4, 100px);
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+        .tile {
+            width: 100px;
+            height: 100px;
+            background-color: #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: bold;
+            border-radius: 10px;
+            color: white;
+        }
+        .tile-2 { background-color: #eee4da; }
+        .tile-4 { background-color: #f47c7c; }
+        .tile-8 { background-color: #f58c42; }
+        .tile-16 { background-color: #f5a832; }
+        .tile-32 { background-color: #f5bb24; }
+        .tile-64 { background-color: #f7c72a; }
+        .tile-128 { background-color: #ffcc00; }
+        .tile-256 { background-color: #ffb300; }
+        .tile-512 { background-color: #ff9800; }
+        .tile-1024 { background-color: #f57c00; }
+        .tile-2048 { background-color: #d84315; }
+        #score {
+            font-size: 24px;
+            margin-top: 20px;
+        }
+        #high-score {
+            font-size: 24px;
+        }
+        #game-over {
+            font-size: 36px;
+            color: red;
+            font-weight: bold;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>2048 Game</h1>
+    <div id="score">Score: 0</div>
+    <div id="high-score">High Score: 0</div>
+    <div id="game-board"></div>
+    <div id="game-over">Game Over</div>
+
+    <audio id="merge-sound" src="merge.mp3" preload="auto"></audio>
+    <audio id="move-sound" src="move.mp3" preload="auto"></audio>
+
+    <script>
+        const size = 4;
+        let board = [];
+        let score = 0;
+        let highScore = localStorage.getItem("highScore") || 0;
+        let gameOver = false;
+        const mergeSound = document.getElementById('merge-sound');
+        const moveSound = document.getElementById('move-sound');
+        const gameOverText = document.getElementById('game-over');
+
+        const updateScore = () => {
+            document.getElementById('score').textContent = `Score: ${score}`;
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem("highScore", highScore);
+            }
+            document.getElementById('high-score').textContent = `High Score: ${highScore}`;
+        };
+
+        const initializeBoard = () => {
+            board = Array.from({ length: size }, () => Array(size).fill(0));
+            score = 0;
+            addRandomTile();
+            addRandomTile();
+            renderBoard();
+            gameOver = false;
+            gameOverText.style.display = 'none';
+        };
+
+        const addRandomTile = () => {
+            let emptyCells = [];
+            for (let row = 0; row < size; row++) {
+                for (let col = 0; col < size; col++) {
+                    if (board[row][col] === 0) {
+                        emptyCells.push([row, col]);
+                    }
+                }
+            }
+            if (emptyCells.length > 0) {
+                const [row, col] = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+                board[row][col] = Math.random() < 0.9 ? 2 : 4;
+            }
+        };
+
+        const renderBoard = () => {
+            const gameBoard = document.getElementById('game-board');
+            gameBoard.innerHTML = "";
+            for (let row = 0; row < size; row++) {
+                for (let col = 0; col < size; col++) {
+                    const tileValue = board[row][col];
+                    const tile = document.createElement('div');
+                    tile.classList.add('tile');
+                    if (tileValue > 0) {
+                        tile.classList.add(`tile-${tileValue}`);
+                        tile.textContent = tileValue;
+                    }
+                    gameBoard.appendChild(tile);
+                }
+            }
+            updateScore();
+            checkGameOver();
+        };
+
+        const slideAndMerge = (array) => {
+            const newArray = array.filter(val => val !== 0);
+            let merged = Array(newArray.length).fill(false);
+            for (let i = 0; i < newArray.length - 1; i++) {
+                if (newArray[i] === newArray[i + 1] && !merged[i] && !merged[i + 1]) {
+                    newArray[i] *= 2;
+                    newArray[i + 1] = 0;
+                    merged[i] = true;
+                    score += newArray[i];
+                    mergeSound.play();
+                }
+            }
+            return newArray.filter(val => val !== 0).concat(Array(size - newArray.length).fill(0));
+        };
+
+        const move = (direction) => {
+            if (gameOver) return;
+
+            let moved = false;
+
+            switch (direction) {
+                case 'w':
+                    rotateBoard();
+                    for (let col = 0; col < size; col++) {
+                        const column = board.map(row => row[col]);
+                        const newColumn = slideAndMerge(column);
+                        for (let row = 0; row < size; row++) {
+                            board[row][col] = newColumn[row];
+                        }
+                    }
+                    rotateBoard(true);
+                    break;
+                case 's':
+                    rotateBoard();
+                    for (let col = 0; col < size; col++) {
+                        const column = board.map(row => row[col]).reverse();
+                        const newColumn = slideAndMerge(column);
+                        for (let row = 0; row < size; row++) {
+                            board[size - 1 - row][col] = newColumn[row];
+                        }
+                    }
+                    rotateBoard(true);
+                    break;
+                case 'a':
+                    for (let row = 0; row < size; row++) {
+                        const newRow = slideAndMerge(board[row]);
+                        board[row] = newRow;
+                    }
+                    break;
+                case 'd':
+                    for (let row = 0; row < size; row++) {
+                        const newRow = slideAndMerge(board[row].reverse());
+                        board[row] = newRow.reverse();
+                    }
+                    break;
+            }
+
+            addRandomTile();
+            renderBoard();
+        };
+
+        const rotateBoard = (clockwise = false) => {
+            const tempBoard = [];
+            for (let row = 0; row < size; row++) {
+                tempBoard[row] = [];
+                for (let col = 0; col < size; col++) {
+                    if (clockwise) {
+                        tempBoard[row][col] = board[size - col - 1][row];
+                    } else {
+                        tempBoard[row][col] = board[col][size - row - 1];
+                    }
+                }
+            }
+            board = tempBoard;
+        };
+
+        const checkGameOver = () => {
+            // Check if there's any valid move left
+            for (let row = 0; row < size; row++) {
+                for (let col = 0; col < size; col++) {
+                    const currentTile = board[row][col];
+                    if (currentTile === 0) return;
+                    // Check right
+                    if (col < size - 1 && currentTile === board[row][col + 1]) return;
+                    // Check down
+                    if (row < size - 1 && currentTile === board[row + 1][col]) return;
+                }
+            }
+            gameOver = true;
+            gameOverText.style.display = 'block';
+        };
+
+        const handleKeydown = (event) => {
+            if (event.key === 'r') {
+                initializeBoard();
+            } else if (!gameOver) {
+                switch (event.key) {
+                    case 'w':
+                        move('w');
+                        break;
+                    case 's':
+                        move('s');
+                        break;
+                    case 'a':
+                        move('a');
+                        break;
+                    case 'd':
+                        move('d');
+                        break;
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeydown);
+
+        initializeBoard();
+    </script>
+</body>
+</html>

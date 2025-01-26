@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space Shooter</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+        }
+        canvas {
+            display: block;
+            background-color: #111;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Audio element for explosion sound -->
+    <audio id="explosionSound" src="https://drive.google.com/uc?export=download&id=1EvPol1NDh7itmltrkISGNhkAHwQWjUUr" preload="auto"></audio>
+
+    <button id="testSoundBtn">Test Explosion Sound</button>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let spaceship = { x: canvas.width / 2 - 25, y: canvas.height - 60, width: 50, height: 30, speed: 5 };
+        let bullets = [];
+        let enemies = [];
+        let score = 0;
+        let gameOver = false;
+        let enemySpeed = 2;
+        let difficulty = 'easy';  // Default difficulty
+
+        // Funny death messages
+        const deathMessages = [
+            "You bombed your country... oops!",
+            "Welcome to the Fallout zone.",
+            "Your ship exploded! Try again.",
+            "Aliens win... you lose.",
+            "Kaboom! Game Over!",
+            "The space dust claimed you.",
+            "You were too slow, my friend."
+        ];
+
+        // Special "escape" death messages
+        const escapeMessages = [
+            "Oops! You let them escape... prepare for the explosion!",
+            "Uh-oh! They escaped! Here's your punishment!",
+            "You let them pass... big mistake!",
+            "That was a close one... oh wait, they got away!"
+        ];
+
+        // Spaceship movement
+        let leftPressed = false, rightPressed = false;
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') leftPressed = true;
+            if (e.key === 'ArrowRight') rightPressed = true;
+            if (e.key === ' ') shootBullet(); // Space to shoot
+            if (e.key === 'r' && gameOver) resetGame(); // Reset the game
+            if (e.key === 'e') setDifficulty('easy'); // Easy mode
+            if (e.key === 'm') setDifficulty('medium'); // Medium mode
+            if (e.key === 'i') setDifficulty('impossible'); // Impossible mode
+        });
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft') leftPressed = false;
+            if (e.key === 'ArrowRight') rightPressed = false;
+        });
+
+        // Bullet logic
+        function shootBullet() {
+            if (!gameOver) {
+                bullets.push({ x: spaceship.x + spaceship.width / 2 - 5, y: spaceship.y, width: 10, height: 20 });
+            }
+        }
+
+        // Create enemies
+        function createEnemies() {
+            setInterval(() => {
+                if (!gameOver) {
+                    let enemyX = Math.random() * (canvas.width - 40);
+                    enemies.push({ x: enemyX, y: 0, width: 40, height: 40, speed: enemySpeed });
+                }
+            }, 2000); // Spawn enemies every 2 seconds
+        }
+
+        // Set the difficulty
+        function setDifficulty(level) {
+            difficulty = level;
+            if (difficulty === 'easy') {
+                enemySpeed = 2;
+            } else if (difficulty === 'medium') {
+                enemySpeed = 4;
+            } else if (difficulty === 'impossible') {
+                enemySpeed = 6;
+            }
+            resetGame();
+        }
+
+        // Draw everything
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw spaceship
+            ctx.fillStyle = '#00F';
+            ctx.fillRect(spaceship.x, spaceship.y, spaceship.width, spaceship.height);
+
+            // Draw bullets
+            ctx.fillStyle = '#F00';
+            bullets.forEach((bullet, index) => {
+                bullet.y -= 10; // Move bullets up
+                ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+
+                // Remove bullet if off-screen
+                if (bullet.y < 0) {
+                    bullets.splice(index, 1);
+                }
+            });
+
+            // Draw enemies
+            ctx.fillStyle = '#F00';
+            enemies.forEach((enemy, index) => {
+                enemy.y += enemy.speed; // Move enemies down
+                ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+
+                // Collision detection
+                bullets.forEach((bullet, bIndex) => {
+                    if (
+                        bullet.x < enemy.x + enemy.width &&
+                        bullet.x + bullet.width > enemy.x &&
+                        bullet.y < enemy.y + enemy.height &&
+                        bullet.y + bullet.height > enemy.y
+                    ) {
+                        enemies.splice(index, 1);
+                        bullets.splice(bIndex, 1);
+                        score += 10;
+                    }
+                });
+
+                // Check for game over (collision with spaceship)
+                if (
+                    spaceship.x < enemy.x + enemy.width &&
+                    spaceship.x + spaceship.width > enemy.x &&
+                    spaceship.y < enemy.y + enemy.height &&
+                    spaceship.y + spaceship.height > enemy.y
+                ) {
+                    gameOver = true;
+                    showDeathMessage();
+                }
+
+                // Check for special "escape" death (enemy passes spaceship)
+                if (enemy.y > canvas.height) {
+                    gameOver = true;
+                    showEscapeMessage();
+                }
+
+                // Remove off-screen enemies
+                if (enemy.y > canvas.height) {
+                    enemies.splice(index, 1);
+                }
+            });
+
+            // Draw score
+            ctx.fillStyle = '#FFF';
+            ctx.font = '24px Arial';
+            ctx.fillText('Score: ' + score, 10, 30);
+
+            // Draw game over message
+            if (gameOver) {
+                ctx.fillStyle = '#FFF';
+                ctx.font = '48px Arial';
+                ctx.fillText('Game Over!', canvas.width / 2 - 150, canvas.height / 2);
+            }
+
+            // Move spaceship only if the game is not over
+            if (!gameOver) {
+                if (leftPressed && spaceship.x > 0) spaceship.x -= spaceship.speed;
+                if (rightPressed && spaceship.x < canvas.width - spaceship.width) spaceship.x += spaceship.speed;
+            }
+        }
+
+        function showDeathMessage() {
+            const randomMessage = deathMessages[Math.floor(Math.random() * deathMessages.length)];
+            alert(randomMessage);
+            playExplosionSound();
+            // Remove all enemies when the game ends
+            enemies = [];
+        }
+
+        function showEscapeMessage() {
+            const randomMessage = escapeMessages[Math.floor(Math.random() * escapeMessages.length)];
+            alert(randomMessage);
+            playExplosionSound();
+            // Remove all enemies when the game ends
+            enemies = [];
+        }
+
+        function playExplosionSound() {
+            const explosionSound = document.getElementById('explosionSound');
+            explosionSound.volume = 1; // Set to maximum volume
+            explosionSound.play();
+        }
+
+        // Reset game
+        function resetGame() {
+            spaceship.x = canvas.width / 2 - 25;
+            spaceship.y = canvas.height - 60;
+            bullets = [];
+            enemies = [];
+            score = 0;
+            gameOver = false;
+            createEnemies();
+        }
+
+        // Start the game
+        function startGame() {
+            createEnemies();
+            setInterval(draw, 1000 / 60); // 60 frames per second
+        }
+
+        startGame();
+
+        // Test Sound Button
+        document.getElementById('testSoundBtn').addEventListener('click', () => {
+            playExplosionSound();
+        });
+
+    </script>
+</body>
+</html>

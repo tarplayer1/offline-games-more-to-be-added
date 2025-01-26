@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hangman</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #f8f8f8;
+      flex-direction: column;
+    }
+    .game-container {
+      text-align: center;
+    }
+    .word {
+      font-size: 36px;
+      margin-bottom: 20px;
+    }
+    .letters {
+      font-size: 20px;
+      margin-bottom: 20px;
+    }
+    .message {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+    .keyboard {
+      display: grid;
+      grid-template-columns: repeat(13, 30px);
+      gap: 5px;
+      justify-content: center;
+    }
+    .keyboard button {
+      font-size: 18px;
+      padding: 10px;
+      background-color: #f0f0f0;
+      border: 1px solid #ccc;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    .keyboard button:disabled {
+      background-color: #ddd;
+      cursor: not-allowed;
+    }
+    .hangman-img {
+      width: 200px;
+      height: 200px;
+      margin-top: 20px;
+    }
+    .difficulty-container {
+      font-size: 20px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="game-container">
+  <h1>Hangman Game</h1>
+  <div id="difficulty-container" class="difficulty-container">
+    <button onclick="setDifficulty('E')">Easy</button>
+    <button onclick="setDifficulty('M')">Medium</button>
+    <button onclick="setDifficulty('H')">Hard</button>
+    <button onclick="setDifficulty('F')">Impossible</button>
+  </div>
+  <div id="difficulty" class="message">Select Difficulty</div>
+  <div id="word" class="word">_ _ _ _ _</div>
+  <div id="letters" class="letters"></div>
+  <div id="message" class="message"></div>
+  <div id="keyboard" class="keyboard"></div>
+  <img id="hangman-img" class="hangman-img" src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Hangman-0.png/320px-Hangman-0.png" alt="Hangman Image">
+</div>
+
+<script>
+  const words = [
+    'apple', 'banana', 'orange', 'grape', 'watermelon', 'kiwi', 'pineapple',
+    'strawberry', 'blueberry', 'blackberry', 'peach', 'pear', 'mango', 'cherry',
+    'papaya', 'apricot', 'fig', 'plum', 'pomegranate', 'cantaloupe', 'coconut',
+    'lemon', 'lime', 'nectarine', 'dragonfruit', 'avocado', 'tangerine', 'melon',
+    'kumquat', 'gooseberry', 'elderberry', 'pineapple', 'raspberry', 'pear',
+    'cantaloupe', 'watermelon', 'blueberry', 'blackberry', 'strawberry', 'cherry',
+    'grapefruit', 'lime', 'orange', 'mango', 'apricot', 'peach', 'papaya', 'fig',
+    'pomegranate', 'coconut', 'cabbage', 'carrot', 'potato', 'tomato'
+  ];
+  let chosenWord;
+  let displayedWord;
+  let wrongGuesses;
+  let maxWrongGuesses;
+  let difficulty = '';
+
+  const wordElement = document.getElementById('word');
+  const lettersElement = document.getElementById('letters');
+  const messageElement = document.getElementById('message');
+  const keyboardElement = document.getElementById('keyboard');
+  const hangmanImage = document.getElementById('hangman-img');
+  const difficultyElement = document.getElementById('difficulty');
+  
+  // Initialize the game
+  function initializeGame() {
+    chosenWord = words[Math.floor(Math.random() * words.length)];
+    displayedWord = chosenWord.split('').map(() => '_').join(' ');
+    wrongGuesses = 0;
+    wordElement.textContent = displayedWord;
+    messageElement.textContent = 'Guess the word!';
+    hangmanImage.src = `https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Hangman-0.png/320px-Hangman-0.png`;
+
+    // Create keyboard
+    keyboardElement.innerHTML = '';
+    const alphabet = 'abcdefghijklmnopqrstuvwxyz';
+    alphabet.split('').forEach(letter => {
+      const button = document.createElement('button');
+      button.textContent = letter;
+      button.onclick = () => handleGuess(letter);
+      keyboardElement.appendChild(button);
+    });
+
+    lettersElement.textContent = `Wrong guesses: `;
+  }
+
+  // Handle player's guess
+  function handleGuess(letter) {
+    const letters = document.querySelectorAll('#keyboard button');
+    letters.forEach(button => {
+      if (button.textContent === letter) button.disabled = true;
+    });
+
+    let updatedWord = displayedWord.split(' ');
+
+    // If the letter is in the word, replace the corresponding blanks with the letter
+    if (chosenWord.includes(letter)) {
+      for (let i = 0; i < chosenWord.length; i++) {
+        if (chosenWord[i] === letter) {
+          updatedWord[i] = letter;
+        }
+      }
+      displayedWord = updatedWord.join(' '); // Update the displayed word
+      wordElement.textContent = displayedWord;
+
+      // Check if the player has won
+      if (!displayedWord.includes('_')) {
+        messageElement.textContent = 'You won! The word is "' + chosenWord + '"';
+      }
+    } else {
+      wrongGuesses++;
+      lettersElement.textContent = `Wrong guesses: ${wrongGuesses}`;
+      hangmanImage.src = `https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Hangman-${wrongGuesses}.png/320px-Hangman-${wrongGuesses}.png`;
+
+      if (wrongGuesses === maxWrongGuesses) {
+        messageElement.textContent = `You lost! The word was "${chosenWord}".`;
+      }
+    }
+  }
+
+  // Set difficulty and start the game
+  function setDifficulty(level) {
+    switch (level) {
+      case 'E':
+        maxWrongGuesses = 8; // Easy
+        difficulty = 'Easy';
+        break;
+      case 'M':
+        maxWrongGuesses = 6; // Medium
+        difficulty = 'Medium';
+        break;
+      case 'H':
+        maxWrongGuesses = 4; // Hard
+        difficulty = 'Hard';
+        break;
+      case 'F':
+        maxWrongGuesses = 2; // Impossible
+        difficulty = 'Impossible';
+        break;
+    }
+    difficultyElement.textContent = `Difficulty: ${difficulty}`;
+    initializeGame(); // Start the game with the selected difficulty
+  }
+
+  // Reset the game when the "R" key is pressed
+  document.addEventListener('keydown', function(event) {
+    if (event.key === 'r' || event.key === 'R') {
+      initializeGame();
+    }
+  });
+</script>
+
+</body>
+</html>
