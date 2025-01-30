@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rigged Lottery Ticket Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        .button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 15px 32px;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+        .notification {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #4CAF50;
+            color: white;
+            padding: 15px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            opacity: 0.9;
+        }
+        .notification:hover {
+            background-color: #45a049;
+        }
+        #balance {
+            font-size: 18px;
+            margin-top: 30px;
+        }
+        .popup {
+            background-color: #FF6347;
+            color: white;
+            padding: 20px;
+            margin: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            display: inline-block;
+            text-align: center;
+        }
+        .popup img {
+            width: 50px;
+            height: 50px;
+            margin-bottom: 10px;
+        }
+        .popup:hover {
+            background-color: #FF4500;
+        }
+        #ticketImage {
+            width: 100px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Rigged Lottery Ticket Game</h1>
+    <p id="balance">Balance: $100</p>
+    <button class="button" onclick="buyTicket()">Buy Ticket ($10)</button>
+
+    <!-- Popup for Work Station -->
+    <div class="popup" id="workStation" onclick="earnMoney('Work Station')">
+        <img src="https://via.placeholder.com/50?text=💼" alt="Work Station">
+        <p>Work Station</p>
+    </div>
+
+    <!-- Popup for Groceries (updated image) -->
+    <div class="popup" id="groceries" onclick="earnMoney('Groceries')">
+        <img src="https://bigredchurch.org/wp-content/uploads/2021/02/32-322112_pantry-clipart-food-distribution-transparent-background-groceries-clipart.png" alt="Groceries">
+        <p>Groceries</p>
+    </div>
+
+    <!-- Lottery Ticket Graphic -->
+    <img id="ticketImage" src="https://cdn.creazilla.com/cliparts/3742045/raffle-ticket-clipart-md.png" onclick="buyTicket()" alt="Lottery Ticket">
+
+    <!-- Notification will appear here -->
+    <div class="notification" id="notification" onclick="hideNotification()"></div>
+
+    <script>
+        // Starting money
+        let balance = 100;
+
+        function buyTicket() {
+            if (balance < 10) {
+                alert("You don't have enough money to buy a ticket.");
+                return;
+            }
+
+            // Deduct $10 for the ticket
+            balance -= 10;
+            document.getElementById('balance').textContent = `Balance: $${balance}`;
+
+            // Rigged probability: 0.0002% chance to win
+            const chanceToWin = 0.0002;
+            const randomNumber = Math.random() * 100;
+
+            // Determine the result
+            let resultMessage;
+            if (randomNumber < chanceToWin) {
+                resultMessage = "Congratulations! You won $1000!";
+                balance += 1000; // If you win, add $1000
+            } else {
+                resultMessage = "Sorry, you didn't win. Try again!";
+            }
+
+            // Display the notification
+            const notification = document.getElementById('notification');
+            notification.textContent = resultMessage;
+            notification.style.display = 'block';
+            document.getElementById('balance').textContent = `Balance: $${balance}`;
+        }
+
+        function hideNotification() {
+            // Hide the notification when clicked
+            document.getElementById('notification').style.display = 'none';
+        }
+
+        function earnMoney(source) {
+            // Earn $10 by clicking the Work Station or Groceries
+            balance += 10;
+            document.getElementById('balance').textContent = `Balance: $${balance}`;
+            
+            // Show a notification about the money earned
+            const notification = document.getElementById('notification');
+            notification.textContent = `You earned $10 from the ${source}!`;
+            notification.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
